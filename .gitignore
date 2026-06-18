@@ -1,0 +1,20 @@
+# Full-cycle state files
+.full-cycle-state.json
+.parallel-full-cycle-state.json
+
+# Git worktrees
+.worktrees/
+
+# User-local settings (settings.example.json is tracked)
+.claude/settings.local.json
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.idea/
+.vscode/

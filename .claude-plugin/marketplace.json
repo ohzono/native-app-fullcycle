@@ -1,0 +1,17 @@
+{
+  "name": "mobiledev-fullcycle",
+  "description": "iOS(SwiftUI)/Android(Compose) ネイティブ開発のフルサイクル開発を自動化する Claude Code プラグインの marketplace",
+  "owner": {
+    "name": "Seigo Ohzono"
+  },
+  "plugins": [
+    {
+      "name": "mobiledev-fullcycle",
+      "source": {
+        "source": "github",
+        "repo": "ohzono/native-app-fullcycle"
+      },
+      "description": "モバイル開発向けフルサイクル開発ワークフロー: 仕様チェック、計画、TDD実装、コードレビュー、デザインレビュー、VRT、PR作成までの一気通貫開発"
+    }
+  ]
+}

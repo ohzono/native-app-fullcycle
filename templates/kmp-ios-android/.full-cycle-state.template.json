@@ -1,0 +1,29 @@
+{
+  "issue": null,
+  "branch": null,
+  "baseBranch": "main",
+  "worktreeDir": null,
+  "specFiles": [],
+  "currentPhase": 1,
+  "completedPhases": [0],
+  "decisions": {
+    "spec": null,
+    "pmUx": null,
+    "plan": null,
+    "techAssess": null,
+    "reviewHistory": [],
+    "codeReview": null,
+    "guidelineCheck": null,
+    "securityReview": null,
+    "fixToMerge": { "rounds": 0, "finalGrade": null, "history": [] }
+  },
+  "testFiles": [],
+  "snapshots": [],
+  "snapshotComment": false,
+  "prNumber": null,
+  "reviewLoopCount": 0,
+  "designReviewLoopCount": 0,
+  "techAssessLoopCount": 0,
+  "skippedPhases": [],
+  "terminalState": null
+}

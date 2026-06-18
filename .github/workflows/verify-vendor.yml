@@ -1,0 +1,31 @@
+name: Verify vendored android-skills
+
+# android-* ラッパー skill が参照する vendor/android-skills/... のパスが実在するかを
+# 決定論的に検証する。vendored copy（実ファイル同梱）なので submodule 初期化は不要。
+# upstream のリネームや pin 更新で参照が切れた場合にここで検知する。
+
+on:
+  pull_request:
+    paths:
+      - 'skills/android-*/**'
+      - 'vendor/android-skills/**'
+      - 'scripts/sync-android-skills.sh'
+      - 'scripts/verify-android-wrappers.sh'
+      - '.github/workflows/verify-vendor.yml'
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 1
+      - name: Verify android wrapper vendor paths
+        run: bash scripts/verify-android-wrappers.sh

@@ -1,0 +1,57 @@
+{
+  "name": "mobiledev-fullcycle",
+  "description": "モバイル開発向けフルサイクル開発ワークフロー: 仕様チェック、計画、TDD実装、コードレビュー、デザインレビュー、VRT、PR作成までの一気通貫開発",
+  "version": "0.11.1",
+  "author": {
+    "name": "Seigo Ohzono",
+    "url": "https://github.com/ohzono"
+  },
+  "homepage": "https://github.com/ohzono/native-app-fullcycle",
+  "license": "MIT",
+  "repository": "https://github.com/ohzono/native-app-fullcycle",
+  "keywords": ["claude-code", "plugin", "mobile", "ios", "android", "fullcycle", "tdd", "code-review"],
+  "skills": [
+    "./skills/check-spec",
+    "./skills/dev-plan",
+    "./skills/implement",
+    "./skills/root-cause-analysis",
+    "./skills/code-review",
+    "./skills/design-review",
+    "./skills/test-driven-development",
+    "./skills/pr-conflict-resolution",
+    "./skills/ios-visual-regression-testing",
+    "./skills/android-visual-regression-testing",
+    "./skills/ios-app-development",
+    "./skills/android-app-development",
+    "./skills/security",
+    "./skills/accessibility",
+    "./skills/status",
+    "./skills/cleanup",
+    "./skills/fix-to-merge",
+    "./skills/idea-to-app",
+    "./skills/swiftui-pro",
+    "./skills/android-agp-upgrade",
+    "./skills/android-compose-migration",
+    "./skills/android-navigation3",
+    "./skills/android-r8-analyzer",
+    "./skills/android-play-billing",
+    "./skills/android-edge-to-edge"
+  ],
+  "agents": [
+    "./agents/spec-analyzer.md",
+    "./agents/feature-planner.md",
+    "./agents/design-reviewer.md",
+    "./agents/tdd-test-writer.md",
+    "./agents/implementation-lead.md",
+    "./agents/app-reviewer.md",
+    "./agents/vrt-engineer.md",
+    "./agents/guideline-checker.md"
+  ],
+  "commands": [
+    "./commands/full-cycle-dev.md",
+    "./commands/full-cycle-plan.md",
+    "./commands/full-cycle-impl.md",
+    "./commands/full-cycle-review.md",
+    "./commands/parallel-full-cycle.md"
+  ]
+}

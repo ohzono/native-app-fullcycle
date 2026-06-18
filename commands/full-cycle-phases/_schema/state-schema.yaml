@@ -1,0 +1,125 @@
+# フルサイクル開発 状態スキーマ（単一真実源 / source of truth）
+#
+# このファイルは .full-cycle-state.json および .parallel-full-cycle-state.json の
+# 唯一の正準定義です。フェーズファイル・コマンド・status/cleanup スキルは
+# このファイルを参照し、フィールド名・型・デフォルトを再定義してはいけません。
+#
+# パス契約（#44）: すべての状態 I/O は worktree 内 cwd を前提に相対パス
+#   `.full-cycle-state.json` で行う。dispatcher / parallel は状態 I/O 前に
+#   必ず対象 worktree へ `cd` 済みであること。
+
+stateFile: .full-cycle-state.json
+
+# 廃止されたフィールド名（commands/ と status・cleanup スキルに出現したら CI が落ちる）
+deprecatedFields:
+  - devPlan   # → decisions.plan が正準（#30）
+
+fields:
+  issue:            { type: number, required: true }
+  branch:           { type: string, required: true }   # 例 feat/issue-123
+  baseBranch:       { type: string, default: main }
+  worktreeDir:      { type: string, required: true }
+  specFiles:        { type: array,  default: [] }
+  currentPhase:     { type: number, default: 0 }
+  completedPhases:  { type: array,  default: [] }
+  skippedPhases:    { type: array,  default: [] }
+  testFiles:        { type: array,  default: [] }
+  snapshots:        { type: array,  default: [] }
+  snapshotComment:  { type: boolean, default: false }
+  prNumber:         { type: [number, "null"], default: null }
+
+  # ループカウンタ（上限は phase-flow.yaml の loops を正本とする）
+  reviewLoopCount:        { type: number, default: 0, loop: codeReview }
+  designReviewLoopCount:  { type: number, default: 0, loop: designReview }
+  techAssessLoopCount:    { type: number, default: 0, loop: techAssess }
+
+  # 意思決定の記録
+  decisions:
+    type: object
+    fields:
+      spec:           { type: [object, "null"], default: null, writtenBy: [2] }
+      pmUx:           { type: [object, "null"], default: null, writtenBy: [3] }
+      plan:           { type: [object, "null"], default: null, writtenBy: [5] }   # 正準名（devPlan は廃止 #30）
+      techAssess:     { type: [object, "null"], default: null, writtenBy: [6] }
+      reviewHistory:  { type: array,  default: [], writtenBy: [12, 18] }
+      codeReview:     { type: [object, "null"], default: null, writtenBy: [12] } # { grade: A|B|C|D, ... } status が読む
+      guidelineCheck: { type: [object, "null"], default: null, writtenBy: [12] }
+      securityReview: { type: [object, "null"], default: null, writtenBy: [18] }
+      fixToMerge:
+        type: object
+        default: { rounds: 0, finalGrade: null, history: [] }
+        writtenBy: [19]
+        fields:
+          rounds:     { type: number }
+          finalGrade: { type: [string, "null"], enum: [A, B, C, D, "null"] }
+          history:    { type: array }
+
+  # 終局状態（#29）: 再開時にこのフィールドを読み、無確認の再走を防ぐ
+  terminalState:
+    type: [object, "null"]
+    default: null
+    writtenBy: [3, 6, 11, 14, 16, 18, 19]
+    fields:
+      kind:       { type: string, enum: [no-go, rejected, grade-d, loop-exhausted, pr-failed] }
+      phase:      { type: number }
+      reason:     { type: string }
+      recordedAt: { type: string }   # ISO8601
+
+# フィールド読み手（CI が status/cleanup の参照名を検証する正本）
+readers:
+  status:
+    - currentPhase
+    - completedPhases
+    - skippedPhases
+    - decisions.spec
+    - decisions.pmUx
+    - decisions.plan
+    - decisions.codeReview
+    - decisions.fixToMerge
+    - terminalState
+    - prNumber
+  cleanup:
+    - issue
+    - branch
+    - worktreeDir
+
+# parallel 実行の状態スキーマ（同一ドキュメント内のトップレベルキー）
+parallelStateFile: .parallel-full-cycle-state.json
+
+parallelFields:
+  parentIssue:          { type: number, required: true }
+  startedAt:            { type: string }
+  mode:                 { type: string, enum: [parallel, stacked] }
+  batchSize:            { type: [number, "null"], default: null }
+  dependencyGraph:      { type: object, default: {} }
+  executionLayers:      { type: array,  default: [] }
+  stackedPRs:           { type: object, default: {} }
+  failedDependencies:   { type: array,  default: [] }
+  skippedDependencies:  { type: array,  default: [] }
+  subIssues:
+    type: array
+    itemFields:
+      number:          { type: number }
+      title:           { type: [string, "null"] }
+      status:          { type: string, enum: [running, success, stopped, error, spawn_failed, respawning, skipped] }
+      baseBranch:      { type: string, default: main }
+      branch:          { type: [string, "null"] }
+      worktreeDir:     { type: [string, "null"] }
+      teamName:        { type: [string, "null"] }
+      taskId:          { type: [string, "null"] }
+      isolation:       { type: [string, "null"] }
+      isolationKey:    { type: [string, "null"] }
+      outputFile:      { type: [string, "null"] }
+      spawnRetries:    { type: number, default: 0 }
+      spawnVerifiedAt: { type: [string, "null"] }
+      currentPhase:    { type: number }
+      completedPhases: { type: array }
+      resumeState:     { type: object }   # 単一Issue状態の resume 用サブセット（fields を参照）
+      lastHeartbeatAt: { type: [string, "null"] }
+      startedAt:       { type: [string, "null"] }
+      completedAt:     { type: [string, "null"] }
+      result:          { type: [string, "null"] }
+      prNumber:        { type: [number, "null"] }
+      stopReason:      { type: [string, "null"] }
+      skipReason:      { type: [string, "null"] }
+      error:           { type: [string, "null"] }

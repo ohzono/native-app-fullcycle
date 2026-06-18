@@ -1,0 +1,16 @@
+[versions]
+agp = "8.7.3"
+kotlin = "2.1.0"
+androidCompileSdk = "35"
+androidMinSdk = "24"
+androidTargetSdk = "35"
+androidxActivity = "1.9.3"
+
+[libraries]
+androidx-activity = { module = "androidx.activity:activity-ktx", version.ref = "androidxActivity" }
+
+[plugins]
+androidApplication = { id = "com.android.application", version.ref = "agp" }
+androidLibrary = { id = "com.android.library", version.ref = "agp" }
+kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

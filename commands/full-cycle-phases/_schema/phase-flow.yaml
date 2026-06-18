@@ -1,0 +1,111 @@
+# フルサイクル開発 フェーズ遷移・ループ・終局の正本（source of truth）
+#
+# 状態フィールド名は state-schema.yaml を参照。ループ上限はこのファイルの loops が正本。
+# フェーズファイルはこの定義を参照し、遷移・ループ数値・終局条件を再定義しないこと。
+
+# ループ上限（散文に数値を散在させない #28）
+# 注: 各エントリの between/phase は「どのフェーズ間/フェーズのループか」を示す
+#     人間向け注記であり、CI（validate-fullcycle-schema.sh）は max/counterField のみ参照する。
+#     CI 検証されるのは「散文に max 値をハードコードしていないか」であって、between/phase の
+#     phase 番号自体の整合ではない。
+loops:
+  codeReview:    { max: 3, counterField: reviewLoopCount,             operator: ">=", between: [14, 18] }
+  designReview:  { max: 3, counterField: designReviewLoopCount,       operator: ">=", between: [16, 17] }
+  techAssess:    { max: 3, counterField: techAssessLoopCount,         operator: ">=", phase: 6 }
+  fixToMerge:    { max: 5, counterField: decisions.fixToMerge.rounds, operator: ">=", phase: 19 }
+
+# CI リトライ閾値（「3回連続失敗で停止」）は上記4ループとは別系統の運用上の閾値であり、
+# 状態機械のループではないため loops には含めない。Phase 18/20・parallel の該当記述を参照。
+ciRetry:
+  consecutiveFailureLimit: 3   # phase-flow 上の正本。散文側はこの値を参照すること
+
+blocks:
+  a: { name: 計画,   phases: [0, 1, 2, 3, 4, 5, 6, 7] }
+  b: { name: 実装,   phases: [8, 9, 10, 11] }
+  c: { name: レビュー, phases: [12, 13, 14, 15, 16, 17, 18, 19, 20] }
+
+phases:
+  - { id: 0,  name: worktree作成,    block: a, writes: [issue, branch, baseBranch, worktreeDir, currentPhase, completedPhases, skippedPhases, decisions], next: 1 }
+  - { id: 1,  name: 権限チェック,    block: a, writes: [currentPhase], next: 2 }
+  - { id: 2,  name: 仕様チェック,    block: a, writes: [decisions.spec], next: 3 }
+  - id: 3
+    name: PM/UX判定
+    block: a
+    writes: [decisions.pmUx, terminalState]
+    next: 4
+    terminal: [{ when: "pmUx.pm.verdict==no-go || pmUx.ux.verdict==rejected", kind: no-go }]
+  - { id: 4,  name: 仕様チェックイン, block: a, writes: [], next: 5 }
+  - { id: 5,  name: 開発計画,        block: a, writes: [decisions.plan], next: 6 }
+  - id: 6
+    name: 技術アセスメント
+    block: a
+    writes: [decisions.techAssess, techAssessLoopCount, terminalState]
+    next: 7
+    loop: techAssess
+    terminal:
+      - { when: "rejected", kind: rejected }
+      - { when: "techAssessLoopCount>=loops.techAssess.max", kind: loop-exhausted }
+  - { id: 7,  name: 計画チェックイン, block: a, writes: [], next: 8 }
+  - { id: 8,  name: TDDテスト生成,   block: b, writes: [testFiles], next: 9 }
+  - { id: 9,  name: 実装,            block: b, writes: [], next: 10, skipWhen: "未完了TODO==0" }
+  - { id: 10, name: コミット,        block: b, writes: [], next: 11 }
+  - id: 11
+    name: PR作成
+    block: b
+    writes: [prNumber, terminalState]
+    next: 12
+    terminal: [{ when: "PR作成失敗", kind: pr-failed }]
+  - { id: 12, name: コードレビュー,  block: c, writes: [decisions.reviewHistory, decisions.codeReview, decisions.guidelineCheck], next: 13 }
+  - { id: 13, name: PRコメント投稿,  block: c, writes: [], next: 14 }
+  - id: 14
+    name: 修正
+    block: c
+    writes: [reviewLoopCount, terminalState]
+    loop: codeReview
+    next: 15
+    branches:
+      - { when: "UI修正を含む", goto: 15 }
+    terminal: [{ when: "reviewLoopCount>=loops.codeReview.max && 未解決指摘あり", kind: loop-exhausted }]
+  - id: 15
+    name: VRT
+    block: c
+    writes: [snapshots, snapshotComment, skippedPhases]
+    next: 16
+    branches:
+      - { when: "UI変更なし", goto: 18, effect: "skippedPhases += [15,16,17]" }
+  - id: 16
+    name: デザインレビュー
+    block: c
+    writes: [designReviewLoopCount, terminalState]
+    loop: designReview
+    next: 17
+    branches:
+      - { when: "snapshots空 && UI変更あり", goto: 15 }
+      - { when: "snapshots空 && UI変更なし", goto: 18 }
+    terminal:
+      - { when: "designReviewLoopCount>=loops.designReview.max", kind: loop-exhausted }
+      - { when: "rejected(大幅な設計見直し)", kind: rejected }
+  - { id: 17, name: デザイン修正,    block: c, writes: [], next: 16 }
+  - id: 18
+    name: 最終レビュー
+    block: c
+    writes: [decisions.reviewHistory, decisions.securityReview, terminalState]
+    next: 19
+    branches:
+      - { when: "修正必要", goto: 14, note: "loops.codeReview に従う" }
+    terminal: [{ when: "CI 3回連続失敗", kind: loop-exhausted }]
+  - id: 19
+    name: Fix to Merge
+    block: c
+    writes: [decisions.fixToMerge, terminalState]
+    loop: fixToMerge
+    next: 20
+    terminal:
+      - { when: "D評価", kind: grade-d, record: "decisions.fixToMerge.finalGrade=D" }
+      - { when: "rounds>=loops.fixToMerge.max && A評価未達", kind: loop-exhausted, record: "decisions.fixToMerge.finalGrade=B|C" }
+  - { id: 20, name: 完了(マージ),    block: c, writes: [], next: null }
+
+# 終局に達した実行の再開規約（#29）
+resumeContract: >
+  terminalState が null でない場合、自動再開してはならない。
+  status で終局種別と理由を表示し、ユーザー確認を得てから再開・クローズを判断する。

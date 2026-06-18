@@ -1,0 +1,33 @@
+name: Validate Schema
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - 'commands/**'
+      - 'skills/status/**'
+      - 'skills/cleanup/**'
+      - 'templates/**/.full-cycle-state.template.json'
+      - 'scripts/validate-fullcycle-schema.sh'
+      - 'scripts/test/validate-fullcycle-schema.test.sh'
+      - '.github/workflows/validate-schema.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 1
+      - name: Install yq
+        run: |
+          # バージョン固定（vendoring の SHA pin 方針と一貫させる）
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.53.3/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+          yq --version
+      - name: Validate fullcycle schema
+        run: bash scripts/validate-fullcycle-schema.sh
+      - name: Run validator self-test
+        run: bash scripts/test/validate-fullcycle-schema.test.sh
