@@ -1,0 +1,41 @@
+name: gitleaks
+
+# 秘密情報の混入を全履歴で検査する共通ジョブ。
+# 必須チェックにできるよう paths で絞らず、PR と main への push で常に結果を返す。
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GITLEAKS_VERSION: 8.30.1
+      GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/gitleaks"
+          mkdir -p "$dir"
+          tarball="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -fsSL -o "$dir/$tarball" "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${tarball}"
+          echo "${GITLEAKS_SHA256}  $dir/$tarball" | sha256sum -c -
+          tar -xzf "$dir/$tarball" -C "$dir" gitleaks
+          echo "$dir" >> "$GITHUB_PATH"
+      - name: Scan full git history
+        # HEAD から辿れる全コミットを検査する（他ブランチは対象外）。
+        # 値はログに出さない（--redact）。誤検知は .gitleaksignore / .gitleaks.toml で除外する。
+        run: gitleaks git . --log-opts="HEAD" --redact --verbose --no-banner --exit-code 1
