@@ -39,3 +39,28 @@ jobs:
         # HEAD から辿れる全コミットを検査する（他ブランチは対象外）。
         # 値はログに出さない（--redact）。誤検知は .gitleaksignore / .gitleaks.toml で除外する。
         run: gitleaks git . --log-opts="HEAD" --redact --verbose --no-banner --exit-code 1
+
+  # GitHub hosted の macOS ランナーは使用禁止（Seigoさん指示、2026-10-29）。
+  # Mac のビルドは mini の self-hosted か手元で行う。.github/workflows に hosted macOS の指定があれば失敗する。
+  no-hosted-macos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Check runs-on for hosted macOS
+        run: |
+          # 式は「mac[o]s-」と書き、この行自身には一致しないようにしている。
+          hits="$(find .github/workflows -type f \( -name '*.yml' -o -name '*.yaml' \) -exec awk '
+            /^[[:space:]]*#/ { next }
+            { line = $0; sub(/[[:space:]]#.*$/, "", line) }
+            tolower(line) ~ /mac[o]s-[0-9a-z]/ { printf "%s:%d: %s\n", FILENAME, FNR, $0 }
+          ' {} +)"
+          if [ -n "$hits" ]; then
+            printf '%s\n' "$hits"
+            echo "::error::GitHub hosted の macOS ランナーは使用禁止です（Seigoさん指示）。runs-on は mini の self-hosted ラベルにするか、手元でビルドしてください。"
+            exit 1
+          fi
+          echo "hosted macOS ランナーの指定はありません。"
